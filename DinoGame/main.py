@@ -14,7 +14,15 @@ from .managers.life_manager import LifeManager
 from .states import menu_state, game_over_state
 from .game_loop import game_update_and_draw
 
+from .serial_reader import BlinkReader
+
 GROUND_Y = 350
+
+def handle_blink_jump(game_data, blink_reader):
+    if blink_reader.consume_blink() and not game_data["game_over"]:
+        print("Blink detected! Dino jumps!")
+        game_data["dino"].jump()
+
 
 def init_game():
     pygame.init()
@@ -39,7 +47,9 @@ def create_game_data(game_over_banner):
         "game_over": False,
     }
 
-def main():
+def main(blink_enabled=False):
+    blink_reader = BlinkReader() if blink_enabled else None
+
     screen = init_game()
     clock = pygame.time.Clock()
 
@@ -68,7 +78,7 @@ def main():
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE and not game_data["game_over"]:
                         game_data["dino"].jump()
-
+                 
             elif state == "GAME_OVER":
                 result = game_over_state.handle_game_over_events(event, game_over_banner)
                 if result == "restart":
@@ -84,6 +94,10 @@ def main():
 
         elif state == "PLAYING":
             waiting_to_start = game_update_and_draw(screen, game_data, GROUND_Y)
+
+            if blink_reader:
+                        handle_blink_jump(game_data, blink_reader)
+                        
             if game_data["game_over"]:
                 state = "GAME_OVER"
 
@@ -93,6 +107,8 @@ def main():
         pygame.display.flip()
         clock.tick(60)
 
+    if blink_reader:
+        blink_reader.close()
     pygame.quit()
 
 if __name__ == "__main__":
